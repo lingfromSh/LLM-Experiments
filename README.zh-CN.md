@@ -189,6 +189,7 @@ eval-platform history compare run_123 run_456
 LLM 评估很慢。非常慢。单次运行可能需要几分钟到几小时。你不应该盯着它等。
 
 **提交后就不用管了：**
+
 ```bash
 # 提交评估到后台运行
 eval-platform run submit \
@@ -209,6 +210,7 @@ eval-platform run list
 ```
 
 **后台发生了什么：**
+
 - 带优先级调度的任务队列
 - 瞬态故障自动重试
 - 带预计完成时间的进度追踪
@@ -216,6 +218,7 @@ eval-platform run list
 - 优雅关闭和恢复
 
 **通知：**
+
 ```bash
 # 完成后通知
 eval-platform run submit ... --notify slack,email
@@ -225,12 +228,14 @@ eval-platform run submit ... --webhook https://your-service/callback
 ```
 
 **为什么重要：**
+
 - 午饭前提交 10 个实验，饭后看结果
 - 过夜运行扫描，不用开着终端
 - CI/CD 集成不会阻塞流水线
 - 团队成员可以提交任务，不用等别人完成
 
 **高级特性：**
+
 - 任务依赖（A 完成后运行 B）
 - 资源配额（限制并发 GPU 使用）
 - 成本预算（API 花费超过阈值时停止）

@@ -189,6 +189,7 @@ eval-platform history compare run_123 run_456
 LLM evaluation is slow. Really slow. A single run can take minutes to hours. You shouldn't have to babysit it.
 
 **Submit and forget:**
+
 ```bash
 # Submit evaluation to run in background
 eval-platform run submit \
@@ -209,6 +210,7 @@ eval-platform run list
 ```
 
 **What happens in the background:**
+
 - Job queue with priority scheduling
 - Automatic retries on transient failures
 - Progress tracking with ETA
@@ -216,6 +218,7 @@ eval-platform run list
 - Graceful shutdown and resume
 
 **Notifications:**
+
 ```bash
 # Get notified when done
 eval-platform run submit ... --notify slack,email
@@ -225,12 +228,14 @@ eval-platform run submit ... --webhook https://your-service/callback
 ```
 
 **Why this matters:**
+
 - Submit 10 experiments before lunch, review results after
 - Run overnight sweeps without keeping a terminal open
 - CI/CD integration without blocking pipelines
 - Team members can submit jobs without waiting for others to finish
 
 **Advanced features:**
+
 - Job dependencies (run B after A completes)
 - Resource quotas (limit concurrent GPU usage)
 - Cost budgeting (stop if API spend exceeds threshold)
