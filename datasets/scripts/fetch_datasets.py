@@ -9,6 +9,7 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -17,6 +18,40 @@ import yaml
 
 DATASETS_DIR = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = DATASETS_DIR / "registry.yaml"
+
+
+# ── Token Handling ─────────────────────────────────────────────────────────
+# All datasets used here are public. An expired/corrupted HF token in
+# ~/.cache/huggingface/token causes 401 errors. Detect this upfront and
+# fall back to unauthenticated access.
+
+def _resolve_hf_token() -> bool | str | None:
+    """Return a token value for load_dataset(), or False to skip auth."""
+    from huggingface_hub import get_token
+
+    token = get_token()
+    if token is None:
+        return False  # no token cached → unauthenticated
+
+    # Quick validity check: hit a lightweight endpoint
+    import httpx
+
+    try:
+        resp = httpx.get(
+            "https://huggingface.co/api/whoami-v2",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return token  # valid
+        print(f"  ⚠ Cached HF token is invalid (HTTP {resp.status_code}). Using unauthenticated access.")
+        return False
+    except Exception:
+        print("  ⚠ Could not validate HF token. Using unauthenticated access.")
+        return False
+
+
+HF_TOKEN = _resolve_hf_token()
 
 # Category -> directory mapping
 CATEGORY_DIRS = {
@@ -49,7 +84,7 @@ def fetch_gsm8k(target_size: int) -> list[dict]:
     """Fetch GSM8K math problems. Extract final numeric answer from #### format."""
     from datasets import load_dataset
 
-    ds = load_dataset("openai/gsm8k", "main", split="test")
+    ds = load_dataset("openai/gsm8k", "main", split="test", token=HF_TOKEN)
     entries = []
     for i, item in enumerate(ds):
         if i >= target_size:
@@ -79,7 +114,7 @@ def fetch_humaneval(target_size: int) -> list[dict]:
     """Fetch HumanEval coding problems with test cases."""
     from datasets import load_dataset
 
-    ds = load_dataset("openai/openai_humaneval", split="test")
+    ds = load_dataset("openai/openai_humaneval", split="test", token=HF_TOKEN)
     entries = []
     for i, item in enumerate(ds):
         if i >= target_size:
@@ -121,7 +156,7 @@ def fetch_truthfulqa(target_size: int) -> list[dict]:
     """Fetch TruthfulQA generation split."""
     from datasets import load_dataset
 
-    ds = load_dataset("truthyqa/truthful_qa", "generation", split="validation")
+    ds = load_dataset("TruthfulQA/truthful_qa", "generation", split="validation", token=HF_TOKEN)
     entries = []
     for i, item in enumerate(ds):
         if i >= target_size:
@@ -165,8 +200,8 @@ def fetch_bbh(target_size: int) -> list[dict]:
     subtasks = [
         "sports_understanding",
         "causal_judgement",
-        "multi_step_arithmetic",
-        "logical_deduction",
+        "multistep_arithmetic_two",
+        "logical_deduction_five_objects",
         "boolean_expressions",
     ]
 
@@ -175,7 +210,7 @@ def fetch_bbh(target_size: int) -> list[dict]:
 
     for subtask in subtasks:
         try:
-            ds = load_dataset("lukaemon/bbh", subtask, split="test")
+            ds = load_dataset("lukaemon/bbh", subtask, split="test", token=HF_TOKEN)
         except Exception as e:
             print(f"  ⚠ Could not load BBH subtask '{subtask}': {e}")
             continue
@@ -214,7 +249,7 @@ def fetch_wmt(target_size: int) -> list[dict]:
     from datasets import load_dataset
 
     try:
-        ds = load_dataset("wmt16", "ro-en", split="test")
+        ds = load_dataset("wmt/wmt16", "ro-en", split="test", token=HF_TOKEN)
     except Exception as e:
         print(f"  ⚠ Could not load WMT: {e}")
         print("  → Using sample data instead. See datasets/translation/translation_sample.jsonl")

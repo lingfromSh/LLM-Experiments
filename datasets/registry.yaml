@@ -38,7 +38,7 @@ datasets:
 
   - name: truthfulqa
     category: factual
-    source: truthyqa/truthful_qa
+    source: TruthfulQA/truthful_qa
     subset: generation
     license: Apache-2.0
     split: validation

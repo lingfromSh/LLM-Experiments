@@ -1,154 +1,407 @@
-# MyLLMEval — 个人 LLM 评估体系
+# 🔬 LLM Experiments
 
-本项目旨在建立一套**属于自己的 LLM 评估体系**——不是跑一遍公开排行榜，而是基于实际生产场景，通过一系列可控实验来回答一个核心问题：**在我的业务里，哪个模型、哪种配置真正好用？**
+> A systematic evaluation framework for LLMs and Agents — from temperature sweeps to cross-model Cartesian product benchmarks.
 
-你可以把整个项目看作一组**从生产需求出发的测试与评估集合**。每个实验都对应一个真实的评估维度（温度敏感性、事实准确性、代码能力、推理能力等），所有结果都可以通过 `models.json` 的配置直接复现或对比。
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![uv](https://img.shields.io/badge/package%20manager-uv-black.svg)](https://github.com/astral-sh/uv)
 
-## 核心理念
+---
 
-- **自己的标准**：不依赖通用 benchmark 排名，而是定义对自己业务重要的评估维度和数据集。
-- **生产导向**：评估维度来自真实场景——数学推理、代码生成、事实准确性、翻译保真度、创意写作等。
-- **可复现**：通过 `models.json` 锁定模型端点，任何实验都可以精确复现和对比。
-- **可扩展**：新增数据集、评估指标、模型都只需添加配置，无需改动框架代码。
+## The Problem
 
-## 快速开始
+Everyone benchmarks LLMs. Almost nobody does it rigorously.
 
-### 1. 安装依赖
+Leaderboards optimize for cherry-picked tasks. Production performance depends on interactions you never tested — temperature × task type × model × prompt strategy. You ship v1, tweak a hyperparameter, and watch quality silently degrade because your "eval" was a vibe check.
 
-```bash
-uv sync
+**LLM Experiments** exists to fix this. It's a reproducible evaluation harness that treats LLM assessment the way serious engineering treats performance testing: systematic, observable, and exhaustive.
+
+---
+
+## What This Is
+
+A Python framework for running controlled experiments across LLMs and agents, with:
+
+- **Temperature sweep experiments** — measure how sampling temperature affects quality across 7 task categories
+- **Multi-model comparison** — Cartesian product evaluation across arbitrary model configurations
+- **Agent evaluation** — extend beyond single-turn QA to multi-step agent workflows
+- **LLM-as-Judge scoring** — calibrated GEval metrics with configurable rubrics
+- **Observability built-in** — Arize Phoenix tracing for every inference, every judgment
+- **Reproducible by default** — declarative configs, versioned datasets, deterministic execution
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Experiment Runner                      │
+│  (pytest + deepeval + litellm unified interface)         │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐  │
+│  │  Models   │  │ Datasets │  │   Scoring Pipeline   │  │
+│  │           │  │          │  │                      │  │
+│  │ models.   │  │ registry │  │  exact_match         │  │
+│  │ json      │  │ .yaml →  │  │  code_exec           │  │
+│  │ (litellm) │  │ JSONL    │  │  GEval (LLM judge)   │  │
+│  └──────────┘  └──────────┘  └──────────────────────┘  │
+│                                                          │
+├─────────────────────────────────────────────────────────┤
+│              Observability Layer                          │
+│         Arize Phoenix (traces, spans, metrics)           │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 2. 配置模型
+### Key Design Decisions
 
-复制示例配置并填入你的模型信息：
+| Decision                       | Rationale                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| **LiteLLM as model interface** | One API for OpenAI, Anthropic, local (vLLM, Ollama, LM Studio), any OpenAI-compatible endpoint |
+| **DeepEval as metric engine**  | Production-grade GEval implementation with built-in caching and model abstraction              |
+| **pytest as runner**           | Leverage existing ecosystem — parallelism, filtering, CI integration, rich reporting           |
+| **JSONL datasets**             | Streaming-friendly, git-diffable, no database dependency                                       |
+| **Arize Phoenix for tracing**  | Open-source, local-first, OpenTelemetry-compatible. No vendor lock-in                          |
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- At least one LLM endpoint (local or remote)
+
+### Installation
+
+```bash
+# Clone the repo
+git clone https://github.com/<your-org>/llm-experiments.git
+cd llm-experiments
+
+# Install dependencies (uv)
+uv sync
+
+# Or with pip
+pip install -e .
+```
+
+### Configure Models
+
+Copy the example config and define your models:
 
 ```bash
 cp models.json.example models.json
 ```
 
-编辑 `models.json`，将 `default` 和 `judge` 指向你要评估的模型：
-
-```json
+```jsonc
+// models.json
 {
   "default": {
-    "model": "openai/gpt-4o",
-    "api_key": "sk-xxx",
-    "api_base": "https://api.openai.com/v1"
+    "model": "openai/gpt-4o-mini",
+    "api_key": "sk-...",
+    "api_base": "https://api.openai.com/v1",
+  },
+  "claude": {
+    "model": "anthropic/claude-sonnet-4-20250514",
+    "api_key": "sk-ant-...",
+  },
+  "local": {
+    "model": "openai/your-local-model",
+    "api_key": "no_need_any_key",
+    "api_base": "http://localhost:1234/v1",
   },
   "judge": {
-    "model": "openai/gpt-4o-mini",
-    "api_key": "sk-xxx",
-    "api_base": "https://api.openai.com/v1"
-  }
+    "model": "openai/gpt-4o",
+    "api_key": "sk-...",
+    "api_base": "https://api.openai.com/v1",
+  },
 }
 ```
 
-- **`default`**：被评估的模型（待测 LLM 或 Agent 的端点）。
-- **`judge`**：评估模型（LLM-as-Judge，用于主观任务的自动评分）。
+The `judge` key defines which model scores subjective tasks via GEval. Separate it from your test models to avoid self-evaluation bias.
 
-两个角色可以指向同一个模型，也可以分开——比如用 GPT-4o 做 judge 来评估一个本地小模型。
-
-> **评估自己的 Agent？** 只需将 `api_base` 指向你的 Agent 服务地址（兼容 OpenAI 接口即可），`model` 字段填你的 Agent 标识名。框架会将 Agent 视为一个普通 LLM 端点进行评测。
-
-### 3. 下载数据集
+### Fetch Datasets
 
 ```bash
-# 下载全部数据集
+# Download all benchmark datasets
 python datasets/scripts/fetch_datasets.py
 
-# 或只下载某个数据集
+# Download a specific dataset
 python datasets/scripts/fetch_datasets.py --dataset gsm8k
 
-# 查看可用数据集
+# List available datasets
 python datasets/scripts/fetch_datasets.py --list
 ```
 
-### 4. 运行实验
-
-实验基于 pytest 运行，通过 CLI 参数切换模型：
+### Run Your First Experiment
 
 ```bash
-# 使用 models.json 中的 default 模型运行所有实验
-pytest experiments/
+# Run a basic correctness test
+pytest experiments/example.py -v
 
-# 指定特定模型
-pytest experiments/ --test-llm-model my-local-model
+# Run temperature sweep on math tasks
+pytest experiments/basic/ -v --test-llm-model default
 
-# 使用不同的 judge 模型
-pytest experiments/ --judge-llm-model gpt-4o-judge
+# Compare two models head-to-head
+pytest experiments/basic/ -v --test-llm-model default
+pytest experiments/basic/ -v --test-llm-model claude
 ```
 
-## 项目结构
+---
+
+## Usage Guide
+
+### Experiment Structure
 
 ```
-MyLLMEval/
-├── models.json              # 模型配置（不入库，需自行创建）
-├── models.json.example      # 模型配置示例
-├── datasets/                # 统一格式的评估数据集
-│   ├── registry.yaml        # 数据集目录（机器可读）
-│   ├── scripts/             # 数据集下载与转换脚本
-│   ├── math/                # GSM8K — 数学推理
-│   ├── coding/              # HumanEval — 代码生成
-│   ├── factual/             # TruthfulQA — 事实准确性
-│   ├── reasoning/           # BBH — 多步推理
-│   ├── writing/             # 学术写作（自定义）
-│   ├── creative_writing/    # 创意写作（自定义）
-│   └── translation/         # 翻译（自定义子集）
-└── experiments/             # 实验代码
-    ├── config.py            # 共享配置（模型加载、温度扫描、指标映射）
-    ├── conftest.py          # pytest CLI 参数
-    └── basic/               # 基础实验
-        └── temperature/     # 温度敏感性实验
+experiments/
+├── conftest.py          # CLI options, shared fixtures
+├── config.py            # Model loading, dataset config, paths
+├── example.py           # Minimal example — start here
+└── basic/               # Temperature sweep experiments
 ```
 
-## 评估维度
+### Writing an Experiment
 
-| 维度       | 数据集        | 评分方式             | 说明                        |
-| ---------- | ------------- | -------------------- | --------------------------- |
-| 数学推理   | GSM8K         | 精确匹配             | 小学应用题，答案确定        |
-| 代码生成   | HumanEval     | 执行测试用例         | Python 函数生成，跑通即正确 |
-| 事实准确性 | TruthfulQA    | LLM-as-Judge (GEval) | 检测幻觉和常见误解          |
-| 多步推理   | BBH           | 精确匹配             | BIG-Bench Hard 逻辑推理任务 |
-| 学术写作   | 自定义        | LLM-as-Judge (GEval) | 清晰度、结构、准确性        |
-| 创意写作   | 自定义        | LLM-as-Judge (GEval) | 创意性、连贯性、文风        |
-| 翻译       | WMT16 (ro-en) | LLM-as-Judge (GEval) | 翻译忠实度和流畅度          |
+Every experiment is a pytest test function. The framework handles model routing, dataset loading, and metric computation:
 
-## 自定义评估
+```python
+from deepeval import assert_test
+from deepeval.test_case import LLMTestCase, SingleTurnParams
+from deepeval.metrics import GEval
+from deepeval.models import LiteLLMModel
+from experiments.config import get_model
 
-### 添加新模型
+def test_my_experiment():
+    # 1. Configure the model under test
+    model_cfg = get_model("default")
+    target_model = LiteLLMModel(
+        model=model_cfg["model"],
+        api_key=model_cfg["api_key"],
+        api_base=model_cfg.get("api_base"),
+    )
 
-在 `models.json` 中添加一个条目即可，无需改代码：
+    # 2. Define your metric
+    metric = GEval(
+        name="Correctness",
+        criteria="Is the output factually correct?",
+        evaluation_params=[
+            SingleTurnParams.ACTUAL_OUTPUT,
+            SingleTurnParams.EXPECTED_OUTPUT,
+        ],
+        threshold=0.7,
+        model=target_model,
+    )
+
+    # 3. Define test cases
+    test_case = LLMTestCase(
+        input="What is the capital of France?",
+        actual_output="Paris",
+        expected_output="Paris",
+    )
+
+    # 4. Assert
+    assert_test(test_case, [metric])
+```
+
+### Temperature Sweep
+
+The core experiment type. Measures how sampling temperature affects output quality across task categories:
+
+```bash
+# Temperatures tested: [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+# Categories: math, coding, factual, reasoning, writing, creative_writing, translation
+
+pytest experiments/basic/ -v -s
+```
+
+Each category has a pre-defined hypothesis (e.g., "low temperature should perform best on math") and calibrated GEval criteria. Results let you validate or refute these assumptions per model.
+
+### Dataset Format
+
+All datasets use a unified JSONL schema:
 
 ```json
 {
-  "my-agent": {
-    "model": "my-agent-v2",
-    "api_key": "your-key",
-    "api_base": "http://localhost:8080/v1"
+  "id": "gsm8k_001",
+  "category": "math",
+  "input": "Janet has 5 apples...",
+  "expected_output": "10",
+  "metadata": {
+    "difficulty": "easy",
+    "source": "gsm8k",
+    "scoring": "exact_match"
   }
 }
 ```
 
-然后运行：
+Three scoring methods:
+
+| Method        | Tasks                                   | Mechanism                                           |
+| ------------- | --------------------------------------- | --------------------------------------------------- |
+| `exact_match` | Math, Reasoning                         | Regex-extract final answer, compare to ground truth |
+| `code_exec`   | Coding                                  | Execute generated code against test cases           |
+| `geval`       | Factual, Writing, Translation, Creative | LLM-as-judge with structured rubric                 |
+
+### Observability
+
+Arize Phoenix traces every inference call — both target model and judge model:
 
 ```bash
-pytest experiments/ --test-llm-model my-agent
+# Start Phoenix UI (opens at http://localhost:6006)
+python -m phoenix.server.main serve
+
+# Traces are automatically exported via OpenTelemetry
+# View: prompt → completion → latency → token usage → judge scores
 ```
 
-### 添加新数据集
+This is not optional instrumentation. When your eval says "model A beats model B," Phoenix lets you inspect _why_ — which specific examples flipped the result, where the judge disagreed, what the temperature curve actually looks like per sample.
 
-1. 在对应分类目录下创建 JSONL 文件，遵循统一格式（见 `datasets/README.md`）
-2. 在 `datasets/registry.yaml` 中注册
-3. 在 `experiments/config.py` 的 `DATASET_CONFIG` 中添加映射
+---
 
-### 添加新实验
+## Supported Benchmarks
 
-在 `experiments/` 下创建新的实验目录，使用 `config.py` 提供的模型加载和配置工具，按 pytest 约定编写测试即可。
+| Dataset          | Category             | Size | Scoring     | Source                  |
+| ---------------- | -------------------- | ---- | ----------- | ----------------------- |
+| GSM8K            | Math reasoning       | 100  | exact_match | openai/gsm8k            |
+| HumanEval        | Code generation      | 164  | code_exec   | openai/openai_humaneval |
+| TruthfulQA       | Factual accuracy     | 100  | geval       | TruthfulQA/truthful_qa  |
+| BBH              | Multi-step reasoning | 100  | exact_match | lukaemon/bbh            |
+| Academic Writing | Technical writing    | 30   | geval       | Custom                  |
+| Creative Writing | Creative tasks       | 30   | geval       | Custom                  |
+| WMT Translate    | Translation (ro-en)  | 50   | geval       | wmt/wmt16               |
 
-## 技术栈
+---
 
-- **[deepeval](https://github.com/confident-ai/deepeval)** — LLM 评估指标（GEval、精确匹配等）
-- **[litellm](https://github.com/BerriAI/litellm)** — 统一模型调用接口（支持 OpenAI、本地模型、任意兼容端点）
-- **[datasets](https://github.com/huggingface/datasets)** — HuggingFace 数据集加载
-- **[pytest](https://pytest.org)** — 实验运行与报告
+## Roadmap
+
+### Phase 1 — Foundation ✅
+
+- [x] Unified dataset registry and JSONL format
+- [x] Temperature sweep framework
+- [x] Multi-scoring pipeline (exact_match, code_exec, geval)
+- [x] LiteLLM integration for model-agnostic inference
+- [x] Arize Phoenix observability
+
+### Phase 2 — Agent Evaluation 🔨
+
+- [ ] Multi-turn agent conversation harness
+- [ ] Tool-use evaluation (function calling accuracy, schema compliance)
+- [ ] Agent trajectory scoring — not just final answer, but path quality
+- [ ] ReAct / CoT / planning pattern comparison
+- [ ] Agent benchmark datasets (SWE-bench subset, WebArena tasks)
+
+### Phase 3 — Scale & Rigor
+
+- [ ] Cartesian product runner — all models × all temperatures × all datasets in one command
+- [ ] Statistical significance testing (bootstrap confidence intervals on GEval scores)
+- [ ] Regression detection — alert when a model update degrades performance on any category
+- [ ] Cost-normalized scoring (quality per dollar, quality per token)
+- [ ] CI/CD integration — run evals on every PR, gate merges on quality thresholds
+
+### Phase 4 — Extensibility
+
+- [ ] Plugin system for custom metrics
+- [ ] Dataset contribution guidelines and validation
+- [ ] Web dashboard for experiment results
+- [ ] Export to common formats (W&B, MLflow, CSV)
+- [ ] Distributed execution (run sweeps across multiple GPU workers)
+
+---
+
+## Project Structure
+
+```
+llm-experiments/
+├── models.json.example       # Model configuration template
+├── pyproject.toml             # Dependencies (uv/pip)
+├── datasets/
+│   ├── registry.yaml          # Dataset catalog (machine-readable)
+│   ├── scripts/
+│   │   └── fetch_datasets.py  # Download & convert to JSONL
+│   ├── math/                  # GSM8K
+│   ├── coding/                # HumanEval
+│   ├── factual/               # TruthfulQA
+│   ├── reasoning/             # BBH
+│   ├── writing/               # Academic writing
+│   ├── creative_writing/      # Creative tasks
+│   └── translation/           # WMT subset
+├── experiments/
+│   ├── conftest.py            # Pytest fixtures & CLI options
+│   ├── config.py              # Shared configuration
+│   ├── example.py             # Minimal working example
+│   └── basic/                 # Temperature sweep experiments
+└── .deepeval/                 # DeepEval cache & results
+```
+
+---
+
+## Adding Your Own Dataset
+
+1. Create a JSONL file in the appropriate `datasets/<category>/` directory
+2. Follow the unified JSONL schema (see [Dataset Format](#dataset-format))
+3. Register it in `datasets/registry.yaml`
+4. Add scoring config in `experiments/config.py` → `DATASET_CONFIG`
+
+```yaml
+# registry.yaml
+- name: my_dataset
+  category: reasoning
+  source: custom
+  license: MIT
+  split: test
+  target_size: 50
+  scoring: exact_match
+  description: "Custom reasoning benchmark"
+```
+
+---
+
+## Adding a Model
+
+Just add an entry to `models.json`. LiteLLM handles the rest:
+
+```json
+{
+  "my_model": {
+    "model": "openai/my-finetune",
+    "api_key": "sk-...",
+    "api_base": "https://my-endpoint.example.com/v1"
+  }
+}
+```
+
+Works with: OpenAI, Anthropic, Google, AWS Bedrock, Azure, vLLM, Ollama, LM Studio, Together AI, Groq, any OpenAI-compatible API.
+
+---
+
+## Contributing
+
+This is an early-stage project. Contributions welcome in:
+
+- **New datasets** — follow the JSONL schema, include licensing info
+- **New metrics** — extend the scoring pipeline for your domain
+- **Agent eval** — the Phase 2 roadmap needs builders
+- **Bug reports** — if something breaks, we want to know
+
+---
+
+## Tech Stack
+
+| Component          | Technology             | Why                                    |
+| ------------------ | ---------------------- | -------------------------------------- |
+| Test runner        | pytest                 | Ecosystem, CI integration, parallelism |
+| LLM interface      | LiteLLM                | 100+ providers, one API                |
+| Metrics            | DeepEval               | GEval, caching, model abstraction      |
+| Datasets           | HuggingFace `datasets` | Standard registry, streaming           |
+| Tracing            | Arize Phoenix          | Open-source, OTel-compatible, local    |
+| Package management | uv                     | Fast, reproducible lockfiles           |
+| Config             | JSON + YAML            | Human-readable, git-friendly           |
+
+---
+
+## License
+
+MIT
