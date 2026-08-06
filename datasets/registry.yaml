@@ -1,0 +1,97 @@
+# Dataset Registry
+# Each entry describes a test dataset used in temperature experiments.
+#
+# Fields:
+#   name:        short identifier (matches directory name)
+#   category:    task type (math | coding | factual | reasoning | writing | creative_writing | translation)
+#   source:      HuggingFace dataset ID or URL
+#   license:     dataset license
+#   split:       which split to download
+#   target_size: number of samples to extract
+#   scoring:     exact_match | code_exec | geval
+#   description: what this dataset measures
+
+datasets:
+  - name: gsm8k
+    category: math
+    source: openai/gsm8k
+    subset: main
+    license: MIT
+    split: test
+    target_size: 100
+    scoring: exact_match
+    description: >
+      Grade school math word problems. Tests basic multi-step arithmetic
+      reasoning. Each problem has a deterministic correct answer.
+
+  - name: humaneval
+    category: coding
+    source: openai/openai_humaneval
+    license: MIT
+    split: test
+    target_size: 64
+    scoring: code_exec
+    description: >
+      HumanEval code generation benchmark. 164 Python function problems
+      with test cases. We use the full test split (164 problems) since
+      it's already small.
+
+  - name: truthfulqa
+    category: factual
+    source: truthyqa/truthful_qa
+    subset: generation
+    license: Apache-2.0
+    split: validation
+    target_size: 100
+    scoring: geval
+    description: >
+      Questions designed to test if models generate truthful answers
+      or fall into common misconceptions. Tests factual accuracy and
+      hallucination resistance.
+
+  - name: bbh
+    category: reasoning
+    source: lukaemon/bbh
+    license: MIT
+    split: test
+    target_size: 100
+    scoring: exact_match
+    description: >
+      BIG-Bench Hard tasks — challenging multi-step reasoning problems
+      including logical deduction, causal reasoning, and arithmetic.
+      Subset of tasks with exact-match scoring.
+
+  - name: academic_writing
+    category: writing
+    source: custom
+    license: N/A
+    split: N/A
+    target_size: 30
+    scoring: geval
+    description: >
+      Academic/technical writing tasks. No single correct answer.
+      Evaluated with GEval rubrics for clarity, accuracy, structure.
+
+  - name: creative_writing
+    category: creative_writing
+    source: custom
+    license: N/A
+    split: N/A
+    target_size: 30
+    scoring: geval
+    description: >
+      Creative writing tasks (stories, poems, marketing copy).
+      Higher temperature should produce more diverse/creative outputs.
+      Evaluated with GEval rubrics for creativity, coherence, style.
+
+  - name: wmt_translate
+    category: translation
+    source: wmt/wmt16
+    subset: ro-en
+    license: N/A
+    split: test
+    target_size: 50
+    scoring: geval
+    description: >
+      Translation tasks (Romanian-English). Near-deterministic task
+      where low temperature should perform better on fidelity.
