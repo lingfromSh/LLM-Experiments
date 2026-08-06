@@ -26,7 +26,8 @@ LLM evaluation is broken. You have:
 ✅ **Metrics** — Built-in exact match, code execution, LLM-as-judge, and custom metrics  
 ✅ **Tracing** — Full observability for every inference and judgment  
 ✅ **History** — Track every evaluation run, compare across time  
-✅ **Comparison** — A/B test prompts, models, temperatures, agent architectures
+✅ **Comparison** — A/B test prompts, models, temperatures, agent architectures  
+✅ **Async Execution** — Submit evaluations and let them run in the background — no more waiting
 
 No more reinventing eval infrastructure. Just evaluate.
 
@@ -182,6 +183,58 @@ eval-platform history compare run_123 run_456
 - Detect regressions after model updates
 - Audit evaluation results for compliance
 - Build dashboards for team visibility
+
+### 🚀 Async Execution
+
+LLM evaluation is slow. Really slow. A single run can take minutes to hours. You shouldn't have to babysit it.
+
+**Submit and forget:**
+```bash
+# Submit evaluation to run in background
+eval-platform run submit \
+  --experiment experiments/temperature/ \
+  --model gpt-4o \
+  --dataset gsm8k \
+  --name "gpt4o-temp-sweep"
+
+# Get a job ID back immediately
+# Job submitted: job_abc123
+
+# Check status
+eval-platform run status job_abc123
+# Status: running (45% complete, ETA: 12m)
+
+# List all jobs
+eval-platform run list
+```
+
+**What happens in the background:**
+- Job queue with priority scheduling
+- Automatic retries on transient failures
+- Progress tracking with ETA
+- Resource management (GPU memory, API rate limits)
+- Graceful shutdown and resume
+
+**Notifications:**
+```bash
+# Get notified when done
+eval-platform run submit ... --notify slack,email
+
+# Or webhook
+eval-platform run submit ... --webhook https://your-service/callback
+```
+
+**Why this matters:**
+- Submit 10 experiments before lunch, review results after
+- Run overnight sweeps without keeping a terminal open
+- CI/CD integration without blocking pipelines
+- Team members can submit jobs without waiting for others to finish
+
+**Advanced features:**
+- Job dependencies (run B after A completes)
+- Resource quotas (limit concurrent GPU usage)
+- Cost budgeting (stop if API spend exceeds threshold)
+- Distributed execution (run across multiple machines)
 
 ### ⚖️ Comparison
 
@@ -470,8 +523,13 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [x] Evaluation history tracking
 - [x] Basic comparison framework
 
-### Phase 2 — Agent Evaluation 🔨
+### Phase 2 — Async & Agent Evaluation 🔨
 
+- [ ] Background job execution (Celery/RQ + Redis)
+- [ ] Job queue with priority scheduling
+- [ ] Progress tracking with ETA
+- [ ] Notification system (Slack, email, webhooks)
+- [ ] Resource management and cost budgeting
 - [ ] Multi-turn agent conversation harness
 - [ ] Tool-use evaluation (function calling accuracy, schema compliance)
 - [ ] Agent trajectory scoring (path quality, not just final answer)

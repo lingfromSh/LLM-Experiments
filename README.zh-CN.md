@@ -26,7 +26,8 @@ LLM 评估现状很糟糕。你面临这些问题：
 ✅ **指标** — 内置精确匹配、代码执行、LLM-as-judge 和自定义指标  
 ✅ **追踪** — 每次推理和评分的完整可观测性  
 ✅ **历史记录** — 追踪每次评估运行，跨时间对比  
-✅ **对比实验** — A/B 测试 prompt、模型、温度、agent 架构
+✅ **对比实验** — A/B 测试 prompt、模型、温度、agent 架构  
+✅ **异步执行** — 提交评估后后台自动运行，无需等待
 
 不再重复造评估基础设施。专注评估本身。
 
@@ -182,6 +183,58 @@ eval-platform history compare run_123 run_456
 - 检测模型更新后的性能回归
 - 审计评估结果以符合合规要求
 - 构建团队可见性的仪表板
+
+### 🚀 异步执行 (Async Execution)
+
+LLM 评估很慢。非常慢。单次运行可能需要几分钟到几小时。你不应该盯着它等。
+
+**提交后就不用管了：**
+```bash
+# 提交评估到后台运行
+eval-platform run submit \
+  --experiment experiments/temperature/ \
+  --model gpt-4o \
+  --dataset gsm8k \
+  --name "gpt4o-temp-sweep"
+
+# 立即返回 job ID
+# Job submitted: job_abc123
+
+# 检查状态
+eval-platform run status job_abc123
+# Status: running (45% complete, ETA: 12m)
+
+# 列出所有任务
+eval-platform run list
+```
+
+**后台发生了什么：**
+- 带优先级调度的任务队列
+- 瞬态故障自动重试
+- 带预计完成时间的进度追踪
+- 资源管理（GPU 内存、API 速率限制）
+- 优雅关闭和恢复
+
+**通知：**
+```bash
+# 完成后通知
+eval-platform run submit ... --notify slack,email
+
+# 或 webhook
+eval-platform run submit ... --webhook https://your-service/callback
+```
+
+**为什么重要：**
+- 午饭前提交 10 个实验，饭后看结果
+- 过夜运行扫描，不用开着终端
+- CI/CD 集成不会阻塞流水线
+- 团队成员可以提交任务，不用等别人完成
+
+**高级特性：**
+- 任务依赖（A 完成后运行 B）
+- 资源配额（限制并发 GPU 使用）
+- 成本预算（API 花费超过阈值时停止）
+- 分布式执行（跨多台机器运行）
 
 ### ⚖️ 对比实验 (Comparison)
 
@@ -470,8 +523,13 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [x] 评估历史追踪
 - [x] 基础对比框架
 
-### 阶段 2 — Agent 评估 🔨
+### 阶段 2 — 异步执行 & Agent 评估 🔨
 
+- [ ] 后台任务执行（Celery/RQ + Redis）
+- [ ] 带优先级调度的任务队列
+- [ ] 带预计完成时间的进度追踪
+- [ ] 通知系统（Slack、邮件、webhooks）
+- [ ] 资源管理和成本预算
 - [ ] 多轮 agent 对话测试框架
 - [ ] 工具使用评估（函数调用准确性、schema 合规性）
 - [ ] Agent 轨迹评分（路径质量，而非仅最终答案）
