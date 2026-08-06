@@ -24,7 +24,7 @@ LLM evaluation is broken. You have:
 ✅ **Metrics** — Built-in exact match, code execution, LLM-as-judge, and custom metrics  
 ✅ **Tracing** — Full observability for every inference and judgment  
 ✅ **History** — Track every evaluation run, compare across time  
-✅ **Comparison** — A/B test prompts, models, temperatures, agent architectures  
+✅ **Comparison** — A/B test prompts, models, temperatures, agent architectures
 
 No more reinventing eval infrastructure. Just evaluate.
 
@@ -37,6 +37,7 @@ No more reinventing eval infrastructure. Just evaluate.
 Unified dataset management with zero friction.
 
 **From HuggingFace:**
+
 ```bash
 # Download and register datasets automatically
 python datasets/scripts/fetch_datasets.py --dataset gsm8k
@@ -44,6 +45,7 @@ python datasets/scripts/fetch_datasets.py --all
 ```
 
 **From your own files:**
+
 ```python
 # Import custom datasets via CLI or API
 python -m eval_platform.datasets import \
@@ -53,12 +55,14 @@ python -m eval_platform.datasets import \
 ```
 
 **In-platform management:**
+
 - All datasets stored in unified JSONL format
 - Registry tracks metadata (source, license, size, scoring method)
 - Version-controlled, reproducible
 - Browse, filter, and manage via CLI or future web UI
 
 **Supported sources:**
+
 - HuggingFace Datasets (auto-download + convert)
 - Local JSONL/JSON/CSV files
 - Custom formats via adapters
@@ -69,16 +73,17 @@ Battery-included evaluation metrics for every use case.
 
 **Built-in metrics:**
 
-| Metric | Use Case | Implementation |
-|--------|----------|----------------|
-| **Exact Match** | Math, reasoning, factual QA | Regex extraction + string comparison |
-| **Code Execution** | Code generation | Sandboxed execution against test cases |
-| **GEval (LLM-as-Judge)** | Subjective tasks (writing, translation, creative) | Calibrated LLM scoring with rubrics |
-| **BLEU/ROUGE** | Translation, summarization | n-gram overlap metrics |
-| **Semantic Similarity** | Paraphrase, embedding quality | Cosine similarity on embeddings |
-| **Custom Metrics** | Your domain | Plugin system for arbitrary logic |
+| Metric                   | Use Case                                          | Implementation                         |
+| ------------------------ | ------------------------------------------------- | -------------------------------------- |
+| **Exact Match**          | Math, reasoning, factual QA                       | Regex extraction + string comparison   |
+| **Code Execution**       | Code generation                                   | Sandboxed execution against test cases |
+| **GEval (LLM-as-Judge)** | Subjective tasks (writing, translation, creative) | Calibrated LLM scoring with rubrics    |
+| **BLEU/ROUGE**           | Translation, summarization                        | n-gram overlap metrics                 |
+| **Semantic Similarity**  | Paraphrase, embedding quality                     | Cosine similarity on embeddings        |
+| **Custom Metrics**       | Your domain                                       | Plugin system for arbitrary logic      |
 
 **Example usage:**
+
 ```python
 from eval_platform.metrics import GEval, ExactMatch, CodeExec
 
@@ -98,6 +103,7 @@ metric = CodeExec(timeout=5, test_cases=[...])
 ```
 
 **Extending metrics:**
+
 ```python
 # Custom metric plugin
 class MyMetric(BaseMetric):
@@ -111,12 +117,14 @@ class MyMetric(BaseMetric):
 Full observability into every evaluation run.
 
 **What's traced:**
+
 - Every LLM inference (prompt, completion, latency, tokens)
 - Every metric computation (judge reasoning, scores)
 - Dataset loading and preprocessing
 - Errors and exceptions
 
 **Powered by Arize Phoenix:**
+
 ```bash
 # Start tracing UI
 python -m phoenix.server.main serve
@@ -124,6 +132,7 @@ python -m phoenix.server.main serve
 ```
 
 **What you get:**
+
 - Trace waterfall (parent → child spans)
 - Token usage and cost tracking
 - Latency breakdown
@@ -131,13 +140,14 @@ python -m phoenix.server.main serve
 - Filter by model, dataset, metric, time range
 
 **Why this matters:**
-When your eval says "Model A beats Model B," tracing shows you *why*. Inspect specific examples, see where the judge disagreed, identify latency bottlenecks.
+When your eval says "Model A beats Model B," tracing shows you _why_. Inspect specific examples, see where the judge disagreed, identify latency bottlenecks.
 
 ### 📈 History & Reports
 
 Track every evaluation run. Compare across time.
 
 **Automatic tracking:**
+
 ```bash
 # Every run is logged
 pytest experiments/ -v
@@ -145,12 +155,14 @@ pytest experiments/ -v
 ```
 
 **What's stored:**
+
 - Run metadata (timestamp, config, git commit)
 - Per-sample results (input, output, expected, score)
 - Aggregate metrics (mean, median, std, confidence intervals)
 - Model configs, prompt templates, hyperparameters
 
 **Query history:**
+
 ```bash
 # List all runs
 eval-platform history list
@@ -163,6 +175,7 @@ eval-platform history compare run_123 run_456
 ```
 
 **Use cases:**
+
 - Track quality improvements after prompt engineering
 - Detect regressions after model updates
 - Audit evaluation results for compliance
@@ -195,12 +208,14 @@ eval-platform compare \
 ```
 
 **What you get:**
+
 - Side-by-side score comparison
 - Statistical significance testing (bootstrap CI)
 - Per-sample breakdown (which examples improved/regressed)
 - Visualization (charts, heatmaps)
 
 **Advanced comparisons:**
+
 - Cartesian product: all models × all prompts × all datasets
 - Regression detection: alert on quality degradation
 - Cost-normalized comparison: quality per dollar
@@ -225,6 +240,7 @@ pip install -e .
 ### Configuration
 
 **1. Configure models:**
+
 ```bash
 cp models.json.example models.json
 ```
@@ -235,25 +251,26 @@ cp models.json.example models.json
   "gpt-4o": {
     "model": "openai/gpt-4o",
     "api_key": "sk-...",
-    "api_base": "https://api.openai.com/v1"
+    "api_base": "https://api.openai.com/v1",
   },
   "claude": {
     "model": "anthropic/claude-3-5-sonnet-20241022",
-    "api_key": "sk-ant-..."
+    "api_key": "sk-ant-...",
   },
   "local": {
     "model": "openai/llama-3.1-8b",
     "api_key": "no_key",
-    "api_base": "http://localhost:11434/v1"
+    "api_base": "http://localhost:11434/v1",
   },
   "judge": {
     "model": "openai/gpt-4o",
-    "api_key": "sk-..."
-  }
+    "api_key": "sk-...",
+  },
 }
 ```
 
 **2. Fetch datasets:**
+
 ```bash
 # Download all benchmark datasets
 python datasets/scripts/fetch_datasets.py --all
@@ -263,11 +280,13 @@ python datasets/scripts/fetch_datasets.py --dataset gsm8k,humaneval
 ```
 
 **3. Start tracing:**
+
 ```bash
 python -m phoenix.server.main serve
 ```
 
 **4. Run your first evaluation:**
+
 ```bash
 # Basic correctness test
 pytest experiments/example.py -v
@@ -280,6 +299,7 @@ pytest experiments/ -v --test-llm-model gpt-4o
 ```
 
 **5. View results:**
+
 ```bash
 # List evaluation history
 eval-platform history list
@@ -317,6 +337,7 @@ eval-platform compare prompt_v1 prompt_v2
 ```
 
 **Output:**
+
 ```
 Comparison: prompt_v1 vs prompt_v2
 Dataset: gsm8k (100 samples)
@@ -412,6 +433,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 ```
 
 **Design principles:**
+
 - **Battery included** — everything works out of the box
 - **Extensible** — plugin system for custom metrics, datasets, exporters
 - **Observable** — full tracing, no black boxes
@@ -422,15 +444,15 @@ pytest experiments/ -v --dataset internal-qa-bench
 
 ## Supported Benchmarks
 
-| Dataset | Category | Size | Scoring | Source |
-|---------|----------|------|---------|--------|
-| GSM8K | Math reasoning | 100 | exact_match | openai/gsm8k |
-| HumanEval | Code generation | 164 | code_exec | openai/openai_humaneval |
-| TruthfulQA | Factual accuracy | 100 | geval | TruthfulQA/truthful_qa |
-| BBH | Multi-step reasoning | 100 | exact_match | lukaemon/bbh |
-| Academic Writing | Technical writing | 30 | geval | Custom |
-| Creative Writing | Creative tasks | 30 | geval | Custom |
-| WMT Translate | Translation (ro-en) | 50 | geval | wmt/wmt16 |
+| Dataset          | Category             | Size | Scoring     | Source                  |
+| ---------------- | -------------------- | ---- | ----------- | ----------------------- |
+| GSM8K            | Math reasoning       | 100  | exact_match | openai/gsm8k            |
+| HumanEval        | Code generation      | 164  | code_exec   | openai/openai_humaneval |
+| TruthfulQA       | Factual accuracy     | 100  | geval       | TruthfulQA/truthful_qa  |
+| BBH              | Multi-step reasoning | 100  | exact_match | lukaemon/bbh            |
+| Academic Writing | Technical writing    | 30   | geval       | Custom                  |
+| Creative Writing | Creative tasks       | 30   | geval       | Custom                  |
+| WMT Translate    | Translation (ro-en)  | 50   | geval       | wmt/wmt16               |
 
 **Adding your own:** See [Datasets module](#-datasets)
 
@@ -439,6 +461,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 ## Roadmap
 
 ### Phase 1 — Core Platform ✅
+
 - [x] Unified dataset management (HF + custom import)
 - [x] Built-in metrics (exact match, code exec, GEval)
 - [x] Tracing integration (Arize Phoenix)
@@ -446,6 +469,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [x] Basic comparison framework
 
 ### Phase 2 — Agent Evaluation 🔨
+
 - [ ] Multi-turn agent conversation harness
 - [ ] Tool-use evaluation (function calling accuracy, schema compliance)
 - [ ] Agent trajectory scoring (path quality, not just final answer)
@@ -453,6 +477,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [ ] Agent benchmark datasets (SWE-bench, WebArena)
 
 ### Phase 3 — Advanced Features
+
 - [ ] Statistical significance testing (bootstrap CI)
 - [ ] Regression detection (alert on quality degradation)
 - [ ] Cost-normalized scoring (quality per dollar, quality per token)
@@ -460,6 +485,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [ ] Distributed execution (run sweeps across multiple workers)
 
 ### Phase 4 — Web Platform
+
 - [ ] Web UI for dataset management
 - [ ] Interactive comparison dashboard
 - [ ] Team collaboration (shared runs, comments, annotations)
@@ -467,6 +493,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [ ] Export to W&B, MLflow, CSV, JSON
 
 ### Phase 5 — Extensibility
+
 - [ ] Plugin marketplace (community metrics, datasets)
 - [ ] Custom metric SDK
 - [ ] Dataset contribution guidelines
@@ -505,15 +532,15 @@ llm-eval-platform/
 
 ## Tech Stack
 
-| Component | Technology | Why |
-|-----------|-----------|-----|
-| **Test runner** | pytest | Ecosystem, CI integration, parallelism |
-| **LLM interface** | LiteLLM | 100+ providers, one API |
-| **Metrics** | DeepEval | GEval, caching, model abstraction |
-| **Datasets** | HuggingFace `datasets` | Standard registry, streaming |
-| **Tracing** | Arize Phoenix | Open-source, OTel-compatible, local |
-| **History** | SQLite + JSONL | Simple, portable, queryable |
-| **Package manager** | uv | Fast, reproducible lockfiles |
+| Component           | Technology             | Why                                    |
+| ------------------- | ---------------------- | -------------------------------------- |
+| **Test runner**     | pytest                 | Ecosystem, CI integration, parallelism |
+| **LLM interface**   | LiteLLM                | 100+ providers, one API                |
+| **Metrics**         | DeepEval               | GEval, caching, model abstraction      |
+| **Datasets**        | HuggingFace `datasets` | Standard registry, streaming           |
+| **Tracing**         | Arize Phoenix          | Open-source, OTel-compatible, local    |
+| **History**         | SQLite + JSONL         | Simple, portable, queryable            |
+| **Package manager** | uv                     | Fast, reproducible lockfiles           |
 
 ---
 
@@ -522,6 +549,7 @@ llm-eval-platform/
 This is an early-stage project. We're building the evaluation platform we wish existed.
 
 **Ways to contribute:**
+
 - **Datasets** — add benchmarks for your domain
 - **Metrics** — implement new evaluation methods
 - **Agent eval** — help build Phase 2
@@ -534,16 +562,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Comparison with Alternatives
 
-| Feature | LLM Eval Platform | DeepEval | LangSmith | Custom Scripts |
-|---------|-------------------|----------|-----------|----------------|
-| **Battery included** | ✅ | ✅ | ❌ | ❌ |
-| **Open source** | ✅ | ✅ | ❌ | ✅ |
-| **Dataset management** | ✅ | ❌ | ❌ | ❌ |
-| **Built-in tracing** | ✅ | ❌ | ✅ | ❌ |
-| **History tracking** | ✅ | ❌ | ✅ | ❌ |
-| **Comparison framework** | ✅ | ❌ | ⚠️ | ❌ |
-| **Self-hosted** | ✅ | ✅ | ❌ | ✅ |
-| **Agent evaluation** | 🔜 | ⚠️ | ✅ | ❌ |
+| Feature                  | LLM Eval Platform | DeepEval | LangSmith | Custom Scripts |
+| ------------------------ | ----------------- | -------- | --------- | -------------- |
+| **Battery included**     | ✅                | ✅       | ❌        | ❌             |
+| **Open source**          | ✅                | ✅       | ❌        | ✅             |
+| **Dataset management**   | ✅                | ❌       | ❌        | ❌             |
+| **Built-in tracing**     | ✅                | ❌       | ✅        | ❌             |
+| **History tracking**     | ✅                | ❌       | ✅        | ❌             |
+| **Comparison framework** | ✅                | ❌       | ⚠️        | ❌             |
+| **Self-hosted**          | ✅                | ✅       | ❌        | ✅             |
+| **Agent evaluation**     | 🔜                | ⚠️       | ✅        | ❌             |
 
 ---
 
@@ -561,4 +589,4 @@ If this project helps your LLM evaluation workflow, consider giving it a ⭐
 
 **Built with ❤️ for the LLM community**
 
-*Stop guessing. Start measuring.*
+_Stop guessing. Start measuring._
