@@ -26,7 +26,7 @@ LLM 评估现状很糟糕。你面临这些问题：
 ✅ **指标** — 内置精确匹配、代码执行、LLM-as-judge 和自定义指标  
 ✅ **追踪** — 每次推理和评分的完整可观测性  
 ✅ **历史记录** — 追踪每次评估运行，跨时间对比  
-✅ **对比实验** — A/B 测试 prompt、模型、温度、agent 架构  
+✅ **对比实验** — A/B 测试 prompt、模型、温度、agent 架构
 
 不再重复造评估基础设施。专注评估本身。
 
@@ -39,6 +39,7 @@ LLM 评估现状很糟糕。你面临这些问题：
 统一的数据集管理，零摩擦。
 
 **从 HuggingFace 下载：**
+
 ```bash
 # 自动下载并注册数据集
 python datasets/scripts/fetch_datasets.py --dataset gsm8k
@@ -46,6 +47,7 @@ python datasets/scripts/fetch_datasets.py --all
 ```
 
 **从自己的文件导入：**
+
 ```python
 # 通过 CLI 或 API 导入自定义数据集
 python -m eval_platform.datasets import \
@@ -55,12 +57,14 @@ python -m eval_platform.datasets import \
 ```
 
 **平台内管理：**
+
 - 所有数据集以统一的 JSONL 格式存储
 - 注册表追踪元数据（来源、许可证、大小、评分方法）
 - 版本控制，可复现
 - 通过 CLI 或未来的 Web UI 浏览、过滤和管理
 
 **支持的数据源：**
+
 - HuggingFace Datasets（自动下载 + 转换）
 - 本地 JSONL/JSON/CSV 文件
 - 通过适配器支持自定义格式
@@ -71,16 +75,17 @@ python -m eval_platform.datasets import \
 
 **内置指标：**
 
-| 指标 | 使用场景 | 实现方式 |
-|------|----------|----------|
-| **精确匹配** | 数学、推理、事实问答 | 正则提取 + 字符串比较 |
-| **代码执行** | 代码生成 | 沙箱执行测试用例 |
+| 指标                     | 使用场景                     | 实现方式                  |
+| ------------------------ | ---------------------------- | ------------------------- |
+| **精确匹配**             | 数学、推理、事实问答         | 正则提取 + 字符串比较     |
+| **代码执行**             | 代码生成                     | 沙箱执行测试用例          |
 | **GEval (LLM-as-Judge)** | 主观任务（写作、翻译、创意） | 带评分标准的校准 LLM 评分 |
-| **BLEU/ROUGE** | 翻译、摘要 | n-gram 重叠度指标 |
-| **语义相似度** | 改写、嵌入质量 | 嵌入向量的余弦相似度 |
-| **自定义指标** | 你的领域 | 支持任意逻辑的插件系统 |
+| **BLEU/ROUGE**           | 翻译、摘要                   | n-gram 重叠度指标         |
+| **语义相似度**           | 改写、嵌入质量               | 嵌入向量的余弦相似度      |
+| **自定义指标**           | 你的领域                     | 支持任意逻辑的插件系统    |
 
 **使用示例：**
+
 ```python
 from eval_platform.metrics import GEval, ExactMatch, CodeExec
 
@@ -100,6 +105,7 @@ metric = CodeExec(timeout=5, test_cases=[...])
 ```
 
 **扩展指标：**
+
 ```python
 # 自定义指标插件
 class MyMetric(BaseMetric):
@@ -113,12 +119,14 @@ class MyMetric(BaseMetric):
 每次评估运行的完整可观测性。
 
 **追踪内容：**
+
 - 每次 LLM 推理（prompt、completion、延迟、token 数）
 - 每次指标计算（judge 推理过程、分数）
 - 数据集加载和预处理
 - 错误和异常
 
 **基于 Arize Phoenix：**
+
 ```bash
 # 启动追踪 UI
 python -m phoenix.server.main serve
@@ -126,6 +134,7 @@ python -m phoenix.server.main serve
 ```
 
 **你能得到：**
+
 - 追踪瀑布图（父 → 子 span）
 - Token 使用和成本追踪
 - 延迟分解
@@ -140,6 +149,7 @@ python -m phoenix.server.main serve
 追踪每次评估运行。跨时间对比。
 
 **自动追踪：**
+
 ```bash
 # 每次运行都会被记录
 pytest experiments/ -v
@@ -147,12 +157,14 @@ pytest experiments/ -v
 ```
 
 **存储内容：**
+
 - 运行元数据（时间戳、配置、git commit）
 - 每样本结果（输入、输出、期望、分数）
 - 聚合指标（均值、中位数、标准差、置信区间）
 - 模型配置、prompt 模板、超参数
 
 **查询历史：**
+
 ```bash
 # 列出所有运行
 eval-platform history list
@@ -165,6 +177,7 @@ eval-platform history compare run_123 run_456
 ```
 
 **使用场景：**
+
 - 追踪 prompt 工程后的质量提升
 - 检测模型更新后的性能回归
 - 审计评估结果以符合合规要求
@@ -197,12 +210,14 @@ eval-platform compare \
 ```
 
 **你能得到：**
+
 - 并排分数对比
 - 统计显著性检验（bootstrap 置信区间）
 - 每样本分解（哪些样本改善/回归）
 - 可视化（图表、热力图）
 
 **高级对比：**
+
 - 笛卡尔积：所有模型 × 所有 prompt × 所有数据集
 - 回归检测：质量下降时告警
 - 成本归一化对比：每美元质量
@@ -227,6 +242,7 @@ pip install -e .
 ### 配置
 
 **1. 配置模型：**
+
 ```bash
 cp models.json.example models.json
 ```
@@ -237,25 +253,26 @@ cp models.json.example models.json
   "gpt-4o": {
     "model": "openai/gpt-4o",
     "api_key": "sk-...",
-    "api_base": "https://api.openai.com/v1"
+    "api_base": "https://api.openai.com/v1",
   },
   "claude": {
     "model": "anthropic/claude-3-5-sonnet-20241022",
-    "api_key": "sk-ant-..."
+    "api_key": "sk-ant-...",
   },
   "local": {
     "model": "openai/llama-3.1-8b",
     "api_key": "no_key",
-    "api_base": "http://localhost:11434/v1"
+    "api_base": "http://localhost:11434/v1",
   },
   "judge": {
     "model": "openai/gpt-4o",
-    "api_key": "sk-..."
-  }
+    "api_key": "sk-...",
+  },
 }
 ```
 
 **2. 获取数据集：**
+
 ```bash
 # 下载所有基准数据集
 python datasets/scripts/fetch_datasets.py --all
@@ -265,11 +282,13 @@ python datasets/scripts/fetch_datasets.py --dataset gsm8k,humaneval
 ```
 
 **3. 启动追踪：**
+
 ```bash
 python -m phoenix.server.main serve
 ```
 
 **4. 运行首次评估：**
+
 ```bash
 # 基础正确性测试
 pytest experiments/example.py -v
@@ -282,6 +301,7 @@ pytest experiments/ -v --test-llm-model gpt-4o
 ```
 
 **5. 查看结果：**
+
 ```bash
 # 列出评估历史
 eval-platform history list
@@ -319,6 +339,7 @@ eval-platform compare prompt_v1 prompt_v2
 ```
 
 **输出：**
+
 ```
 对比：prompt_v1 vs prompt_v2
 数据集：gsm8k（100 个样本）
@@ -414,6 +435,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 ```
 
 **设计原则：**
+
 - **开箱即用** — 所有功能即装即用
 - **可扩展** — 自定义指标、数据集、导出器的插件系统
 - **可观测** — 完整追踪，没有黑盒
@@ -424,15 +446,15 @@ pytest experiments/ -v --dataset internal-qa-bench
 
 ## 支持的基准测试
 
-| 数据集 | 类别 | 大小 | 评分方式 | 来源 |
-|--------|------|------|----------|------|
-| GSM8K | 数学推理 | 100 | 精确匹配 | openai/gsm8k |
-| HumanEval | 代码生成 | 164 | 代码执行 | openai/openai_humaneval |
-| TruthfulQA | 事实准确性 | 100 | GEval | TruthfulQA/truthful_qa |
-| BBH | 多步推理 | 100 | 精确匹配 | lukaemon/bbh |
-| 学术写作 | 技术写作 | 30 | GEval | 自定义 |
-| 创意写作 | 创意任务 | 30 | GEval | 自定义 |
-| WMT 翻译 | 翻译（ro-en） | 50 | GEval | wmt/wmt16 |
+| 数据集     | 类别          | 大小 | 评分方式 | 来源                    |
+| ---------- | ------------- | ---- | -------- | ----------------------- |
+| GSM8K      | 数学推理      | 100  | 精确匹配 | openai/gsm8k            |
+| HumanEval  | 代码生成      | 164  | 代码执行 | openai/openai_humaneval |
+| TruthfulQA | 事实准确性    | 100  | GEval    | TruthfulQA/truthful_qa  |
+| BBH        | 多步推理      | 100  | 精确匹配 | lukaemon/bbh            |
+| 学术写作   | 技术写作      | 30   | GEval    | 自定义                  |
+| 创意写作   | 创意任务      | 30   | GEval    | 自定义                  |
+| WMT 翻译   | 翻译（ro-en） | 50   | GEval    | wmt/wmt16               |
 
 **添加自己的数据集：** 参见[数据集模块](#-数据集-datasets)
 
@@ -441,6 +463,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 ## 路线图
 
 ### 阶段 1 — 核心平台 ✅
+
 - [x] 统一数据集管理（HF + 自定义导入）
 - [x] 内置指标（精确匹配、代码执行、GEval）
 - [x] 追踪集成（Arize Phoenix）
@@ -448,6 +471,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [x] 基础对比框架
 
 ### 阶段 2 — Agent 评估 🔨
+
 - [ ] 多轮 agent 对话测试框架
 - [ ] 工具使用评估（函数调用准确性、schema 合规性）
 - [ ] Agent 轨迹评分（路径质量，而非仅最终答案）
@@ -455,6 +479,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [ ] Agent 基准数据集（SWE-bench、WebArena）
 
 ### 阶段 3 — 高级特性
+
 - [ ] 统计显著性检验（bootstrap 置信区间）
 - [ ] 回归检测（质量下降时告警）
 - [ ] 成本归一化评分（每美元质量、每 token 质量）
@@ -462,6 +487,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [ ] 分布式执行（跨多个 worker 运行扫描）
 
 ### 阶段 4 — Web 平台
+
 - [ ] 数据集管理的 Web UI
 - [ ] 交互式对比仪表板
 - [ ] 团队协作（共享运行、评论、标注）
@@ -469,6 +495,7 @@ pytest experiments/ -v --dataset internal-qa-bench
 - [ ] 导出到 W&B、MLflow、CSV、JSON
 
 ### 阶段 5 — 可扩展性
+
 - [ ] 插件市场（社区指标、数据集）
 - [ ] 自定义指标 SDK
 - [ ] 数据集贡献指南
@@ -507,15 +534,15 @@ llm-eval-platform/
 
 ## 技术栈
 
-| 组件 | 技术 | 选择原因 |
-|------|------|----------|
-| **测试运行器** | pytest | 生态系统、CI 集成、并行执行 |
-| **LLM 接口** | LiteLLM | 100+ 提供商，统一 API |
-| **指标** | DeepEval | GEval、缓存、模型抽象 |
-| **数据集** | HuggingFace `datasets` | 标准注册表、流式处理 |
-| **追踪** | Arize Phoenix | 开源、OTel 兼容、本地运行 |
-| **历史** | SQLite + JSONL | 简单、可移植、可查询 |
-| **包管理** | uv | 快速、可复现的锁文件 |
+| 组件           | 技术                   | 选择原因                    |
+| -------------- | ---------------------- | --------------------------- |
+| **测试运行器** | pytest                 | 生态系统、CI 集成、并行执行 |
+| **LLM 接口**   | LiteLLM                | 100+ 提供商，统一 API       |
+| **指标**       | DeepEval               | GEval、缓存、模型抽象       |
+| **数据集**     | HuggingFace `datasets` | 标准注册表、流式处理        |
+| **追踪**       | Arize Phoenix          | 开源、OTel 兼容、本地运行   |
+| **历史**       | SQLite + JSONL         | 简单、可移植、可查询        |
+| **包管理**     | uv                     | 快速、可复现的锁文件        |
 
 ---
 
@@ -524,6 +551,7 @@ llm-eval-platform/
 这是一个早期项目。我们正在构建我们希望存在的评估平台。
 
 **贡献方式：**
+
 - **数据集** — 为你的领域添加基准测试
 - **指标** — 实现新的评估方法
 - **Agent 评估** — 帮助构建阶段 2
@@ -536,16 +564,16 @@ llm-eval-platform/
 
 ## 与替代方案的对比
 
-| 特性 | LLM Eval Platform | DeepEval | LangSmith | 自定义脚本 |
-|------|-------------------|----------|-----------|------------|
-| **开箱即用** | ✅ | ✅ | ❌ | ❌ |
-| **开源** | ✅ | ✅ | ❌ | ✅ |
-| **数据集管理** | ✅ | ❌ | ❌ | ❌ |
-| **内置追踪** | ✅ | ❌ | ✅ | ❌ |
-| **历史追踪** | ✅ | ❌ | ✅ | ❌ |
-| **对比框架** | ✅ | ❌ | ⚠️ | ❌ |
-| **自托管** | ✅ | ✅ | ❌ | ✅ |
-| **Agent 评估** | 🔜 | ⚠️ | ✅ | ❌ |
+| 特性           | LLM Eval Platform | DeepEval | LangSmith | 自定义脚本 |
+| -------------- | ----------------- | -------- | --------- | ---------- |
+| **开箱即用**   | ✅                | ✅       | ❌        | ❌         |
+| **开源**       | ✅                | ✅       | ❌        | ✅         |
+| **数据集管理** | ✅                | ❌       | ❌        | ❌         |
+| **内置追踪**   | ✅                | ❌       | ✅        | ❌         |
+| **历史追踪**   | ✅                | ❌       | ✅        | ❌         |
+| **对比框架**   | ✅                | ❌       | ⚠️        | ❌         |
+| **自托管**     | ✅                | ✅       | ❌        | ✅         |
+| **Agent 评估** | 🔜                | ⚠️       | ✅        | ❌         |
 
 ---
 
@@ -563,4 +591,4 @@ MIT
 
 **为 LLM 社区用 ❤️ 构建**
 
-*停止猜测。开始度量。*
+_停止猜测。开始度量。_

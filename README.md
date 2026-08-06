@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![uv](https://img.shields.io/badge/package%20manager-uv-black.svg)](https://github.com/astral-sh/uv)
 
+**English** | [中文](./README.zh-CN.md)
+
 ---
 
 ## Why This Exists
