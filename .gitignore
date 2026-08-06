@@ -219,3 +219,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local environment variables
+.env.local
+
+# Deepeval cache
+.deepeval/

@@ -1,0 +1,12 @@
+{
+  "default": {
+    "model": "openai/liquid/lfm2.5-1.2b",
+    "api_key": "no_need_any_key",
+    "api_base": "http://localhost:1234/v1"
+  },
+  "judge": {
+    "model": "openai/liquid/lfm2.5-1.2b",
+    "api_key": "no_need_any_key",
+    "api_base": "http://localhost:1234/v1"
+  }
+}
