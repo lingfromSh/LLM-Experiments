@@ -1,6 +1,6 @@
-# 🔬 LLM Experiments
+# 🔬 LLM Eval Platform
 
-> A systematic evaluation framework for LLMs and Agents — from temperature sweeps to cross-model Cartesian product benchmarks.
+> Production-grade LLM evaluation platform. Battery included.
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -8,89 +8,223 @@
 
 ---
 
-## The Problem
+## Why This Exists
 
-Everyone benchmarks LLMs. Almost nobody does it rigorously.
+LLM evaluation is broken. You have:
 
-Leaderboards optimize for cherry-picked tasks. Production performance depends on interactions you never tested — temperature × task type × model × prompt strategy. You ship v1, tweak a hyperparameter, and watch quality silently degrade because your "eval" was a vibe check.
+- Scattered scripts that run evals once and disappear
+- No way to track whether your prompt v2 is actually better than v1
+- No comparison framework — just manual "looks better to me"
+- Metrics that don't match your actual use case
+- Zero visibility into what's happening during evaluation
 
-**LLM Experiments** exists to fix this. It's a reproducible evaluation harness that treats LLM assessment the way serious engineering treats performance testing: systematic, observable, and exhaustive.
+**LLM Eval Platform** fixes this. It's a complete, production-ready evaluation system with everything you need out of the box:
+
+✅ **Datasets** — Download from HuggingFace or import your own, managed in-platform  
+✅ **Metrics** — Built-in exact match, code execution, LLM-as-judge, and custom metrics  
+✅ **Tracing** — Full observability for every inference and judgment  
+✅ **History** — Track every evaluation run, compare across time  
+✅ **Comparison** — A/B test prompts, models, temperatures, agent architectures  
+
+No more reinventing eval infrastructure. Just evaluate.
 
 ---
 
-## What This Is
+## Core Modules
 
-A Python framework for running controlled experiments across LLMs and agents, with:
+### 📦 Datasets
 
-- **Temperature sweep experiments** — measure how sampling temperature affects quality across 7 task categories
-- **Multi-model comparison** — Cartesian product evaluation across arbitrary model configurations
-- **Agent evaluation** — extend beyond single-turn QA to multi-step agent workflows
-- **LLM-as-Judge scoring** — calibrated GEval metrics with configurable rubrics
-- **Observability built-in** — Arize Phoenix tracing for every inference, every judgment
-- **Reproducible by default** — declarative configs, versioned datasets, deterministic execution
+Unified dataset management with zero friction.
 
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Experiment Runner                      │
-│  (pytest + deepeval + litellm unified interface)         │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐  │
-│  │  Models   │  │ Datasets │  │   Scoring Pipeline   │  │
-│  │           │  │          │  │                      │  │
-│  │ models.   │  │ registry │  │  exact_match         │  │
-│  │ json      │  │ .yaml →  │  │  code_exec           │  │
-│  │ (litellm) │  │ JSONL    │  │  GEval (LLM judge)   │  │
-│  └──────────┘  └──────────┘  └──────────────────────┘  │
-│                                                          │
-├─────────────────────────────────────────────────────────┤
-│              Observability Layer                          │
-│         Arize Phoenix (traces, spans, metrics)           │
-└─────────────────────────────────────────────────────────┘
+**From HuggingFace:**
+```bash
+# Download and register datasets automatically
+python datasets/scripts/fetch_datasets.py --dataset gsm8k
+python datasets/scripts/fetch_datasets.py --all
 ```
 
-### Key Design Decisions
+**From your own files:**
+```python
+# Import custom datasets via CLI or API
+python -m eval_platform.datasets import \
+  --file my_data.jsonl \
+  --category reasoning \
+  --name "my-benchmark"
+```
 
-| Decision                       | Rationale                                                                                      |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- |
-| **LiteLLM as model interface** | One API for OpenAI, Anthropic, local (vLLM, Ollama, LM Studio), any OpenAI-compatible endpoint |
-| **DeepEval as metric engine**  | Production-grade GEval implementation with built-in caching and model abstraction              |
-| **pytest as runner**           | Leverage existing ecosystem — parallelism, filtering, CI integration, rich reporting           |
-| **JSONL datasets**             | Streaming-friendly, git-diffable, no database dependency                                       |
-| **Arize Phoenix for tracing**  | Open-source, local-first, OpenTelemetry-compatible. No vendor lock-in                          |
+**In-platform management:**
+- All datasets stored in unified JSONL format
+- Registry tracks metadata (source, license, size, scoring method)
+- Version-controlled, reproducible
+- Browse, filter, and manage via CLI or future web UI
+
+**Supported sources:**
+- HuggingFace Datasets (auto-download + convert)
+- Local JSONL/JSON/CSV files
+- Custom formats via adapters
+
+### 📊 Metrics
+
+Battery-included evaluation metrics for every use case.
+
+**Built-in metrics:**
+
+| Metric | Use Case | Implementation |
+|--------|----------|----------------|
+| **Exact Match** | Math, reasoning, factual QA | Regex extraction + string comparison |
+| **Code Execution** | Code generation | Sandboxed execution against test cases |
+| **GEval (LLM-as-Judge)** | Subjective tasks (writing, translation, creative) | Calibrated LLM scoring with rubrics |
+| **BLEU/ROUGE** | Translation, summarization | n-gram overlap metrics |
+| **Semantic Similarity** | Paraphrase, embedding quality | Cosine similarity on embeddings |
+| **Custom Metrics** | Your domain | Plugin system for arbitrary logic |
+
+**Example usage:**
+```python
+from eval_platform.metrics import GEval, ExactMatch, CodeExec
+
+# LLM-as-judge with custom rubric
+metric = GEval(
+    name="Clarity",
+    criteria="Is the explanation clear and well-structured?",
+    threshold=0.7,
+    model="gpt-4o"
+)
+
+# Exact match for deterministic tasks
+metric = ExactMatch(extract_pattern=r"The answer is: (\d+)")
+
+# Code execution with sandbox
+metric = CodeExec(timeout=5, test_cases=[...])
+```
+
+**Extending metrics:**
+```python
+# Custom metric plugin
+class MyMetric(BaseMetric):
+    def score(self, input: str, output: str, expected: str) -> float:
+        # Your logic here
+        return 0.95
+```
+
+### 🔍 Tracing
+
+Full observability into every evaluation run.
+
+**What's traced:**
+- Every LLM inference (prompt, completion, latency, tokens)
+- Every metric computation (judge reasoning, scores)
+- Dataset loading and preprocessing
+- Errors and exceptions
+
+**Powered by Arize Phoenix:**
+```bash
+# Start tracing UI
+python -m phoenix.server.main serve
+# Open http://localhost:6006
+```
+
+**What you get:**
+- Trace waterfall (parent → child spans)
+- Token usage and cost tracking
+- Latency breakdown
+- Error inspection
+- Filter by model, dataset, metric, time range
+
+**Why this matters:**
+When your eval says "Model A beats Model B," tracing shows you *why*. Inspect specific examples, see where the judge disagreed, identify latency bottlenecks.
+
+### 📈 History & Reports
+
+Track every evaluation run. Compare across time.
+
+**Automatic tracking:**
+```bash
+# Every run is logged
+pytest experiments/ -v
+# Results saved to .eval_platform/runs/
+```
+
+**What's stored:**
+- Run metadata (timestamp, config, git commit)
+- Per-sample results (input, output, expected, score)
+- Aggregate metrics (mean, median, std, confidence intervals)
+- Model configs, prompt templates, hyperparameters
+
+**Query history:**
+```bash
+# List all runs
+eval-platform history list
+
+# Show details for a specific run
+eval-platform history show run_2024_01_15_14_30
+
+# Compare two runs
+eval-platform history compare run_123 run_456
+```
+
+**Use cases:**
+- Track quality improvements after prompt engineering
+- Detect regressions after model updates
+- Audit evaluation results for compliance
+- Build dashboards for team visibility
+
+### ⚖️ Comparison
+
+Systematic A/B testing for LLM experiments.
+
+**Compare anything:**
+
+```bash
+# Same task, different prompts
+eval-platform compare \
+  --run-baseline prompt_v1 \
+  --run-experiment prompt_v2 \
+  --dataset gsm8k
+
+# Same prompt, different models
+eval-platform compare \
+  --run-baseline gpt-4o \
+  --run-experiment claude-3.5-sonnet \
+  --dataset reasoning
+
+# Same model, different temperatures
+eval-platform compare \
+  --run-baseline temp_0.0 \
+  --run-experiment temp_0.7 \
+  --dataset creative_writing
+```
+
+**What you get:**
+- Side-by-side score comparison
+- Statistical significance testing (bootstrap CI)
+- Per-sample breakdown (which examples improved/regressed)
+- Visualization (charts, heatmaps)
+
+**Advanced comparisons:**
+- Cartesian product: all models × all prompts × all datasets
+- Regression detection: alert on quality degradation
+- Cost-normalized comparison: quality per dollar
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
-- At least one LLM endpoint (local or remote)
-
 ### Installation
 
 ```bash
-# Clone the repo
-git clone https://github.com/<your-org>/llm-experiments.git
-cd llm-experiments
+git clone https://github.com/<your-org>/llm-eval-platform.git
+cd llm-eval-platform
 
-# Install dependencies (uv)
+# Install with uv (recommended)
 uv sync
 
 # Or with pip
 pip install -e .
 ```
 
-### Configure Models
+### Configuration
 
-Copy the example config and define your models:
-
+**1. Configure models:**
 ```bash
 cp models.json.example models.json
 ```
@@ -98,310 +232,333 @@ cp models.json.example models.json
 ```jsonc
 // models.json
 {
-  "default": {
-    "model": "openai/gpt-4o-mini",
+  "gpt-4o": {
+    "model": "openai/gpt-4o",
     "api_key": "sk-...",
-    "api_base": "https://api.openai.com/v1",
+    "api_base": "https://api.openai.com/v1"
   },
   "claude": {
-    "model": "anthropic/claude-sonnet-4-20250514",
-    "api_key": "sk-ant-...",
+    "model": "anthropic/claude-3-5-sonnet-20241022",
+    "api_key": "sk-ant-..."
   },
   "local": {
-    "model": "openai/your-local-model",
-    "api_key": "no_need_any_key",
-    "api_base": "http://localhost:1234/v1",
+    "model": "openai/llama-3.1-8b",
+    "api_key": "no_key",
+    "api_base": "http://localhost:11434/v1"
   },
   "judge": {
     "model": "openai/gpt-4o",
-    "api_key": "sk-...",
-    "api_base": "https://api.openai.com/v1",
-  },
-}
-```
-
-The `judge` key defines which model scores subjective tasks via GEval. Separate it from your test models to avoid self-evaluation bias.
-
-### Fetch Datasets
-
-```bash
-# Download all benchmark datasets
-python datasets/scripts/fetch_datasets.py
-
-# Download a specific dataset
-python datasets/scripts/fetch_datasets.py --dataset gsm8k
-
-# List available datasets
-python datasets/scripts/fetch_datasets.py --list
-```
-
-### Run Your First Experiment
-
-```bash
-# Run a basic correctness test
-pytest experiments/example.py -v
-
-# Run temperature sweep on math tasks
-pytest experiments/basic/ -v --test-llm-model default
-
-# Compare two models head-to-head
-pytest experiments/basic/ -v --test-llm-model default
-pytest experiments/basic/ -v --test-llm-model claude
-```
-
----
-
-## Usage Guide
-
-### Experiment Structure
-
-```
-experiments/
-├── conftest.py          # CLI options, shared fixtures
-├── config.py            # Model loading, dataset config, paths
-├── example.py           # Minimal example — start here
-└── basic/               # Temperature sweep experiments
-```
-
-### Writing an Experiment
-
-Every experiment is a pytest test function. The framework handles model routing, dataset loading, and metric computation:
-
-```python
-from deepeval import assert_test
-from deepeval.test_case import LLMTestCase, SingleTurnParams
-from deepeval.metrics import GEval
-from deepeval.models import LiteLLMModel
-from experiments.config import get_model
-
-def test_my_experiment():
-    # 1. Configure the model under test
-    model_cfg = get_model("default")
-    target_model = LiteLLMModel(
-        model=model_cfg["model"],
-        api_key=model_cfg["api_key"],
-        api_base=model_cfg.get("api_base"),
-    )
-
-    # 2. Define your metric
-    metric = GEval(
-        name="Correctness",
-        criteria="Is the output factually correct?",
-        evaluation_params=[
-            SingleTurnParams.ACTUAL_OUTPUT,
-            SingleTurnParams.EXPECTED_OUTPUT,
-        ],
-        threshold=0.7,
-        model=target_model,
-    )
-
-    # 3. Define test cases
-    test_case = LLMTestCase(
-        input="What is the capital of France?",
-        actual_output="Paris",
-        expected_output="Paris",
-    )
-
-    # 4. Assert
-    assert_test(test_case, [metric])
-```
-
-### Temperature Sweep
-
-The core experiment type. Measures how sampling temperature affects output quality across task categories:
-
-```bash
-# Temperatures tested: [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
-# Categories: math, coding, factual, reasoning, writing, creative_writing, translation
-
-pytest experiments/basic/ -v -s
-```
-
-Each category has a pre-defined hypothesis (e.g., "low temperature should perform best on math") and calibrated GEval criteria. Results let you validate or refute these assumptions per model.
-
-### Dataset Format
-
-All datasets use a unified JSONL schema:
-
-```json
-{
-  "id": "gsm8k_001",
-  "category": "math",
-  "input": "Janet has 5 apples...",
-  "expected_output": "10",
-  "metadata": {
-    "difficulty": "easy",
-    "source": "gsm8k",
-    "scoring": "exact_match"
+    "api_key": "sk-..."
   }
 }
 ```
 
-Three scoring methods:
-
-| Method        | Tasks                                   | Mechanism                                           |
-| ------------- | --------------------------------------- | --------------------------------------------------- |
-| `exact_match` | Math, Reasoning                         | Regex-extract final answer, compare to ground truth |
-| `code_exec`   | Coding                                  | Execute generated code against test cases           |
-| `geval`       | Factual, Writing, Translation, Creative | LLM-as-judge with structured rubric                 |
-
-### Observability
-
-Arize Phoenix traces every inference call — both target model and judge model:
-
+**2. Fetch datasets:**
 ```bash
-# Start Phoenix UI (opens at http://localhost:6006)
-python -m phoenix.server.main serve
+# Download all benchmark datasets
+python datasets/scripts/fetch_datasets.py --all
 
-# Traces are automatically exported via OpenTelemetry
-# View: prompt → completion → latency → token usage → judge scores
+# Or specific datasets
+python datasets/scripts/fetch_datasets.py --dataset gsm8k,humaneval
 ```
 
-This is not optional instrumentation. When your eval says "model A beats model B," Phoenix lets you inspect _why_ — which specific examples flipped the result, where the judge disagreed, what the temperature curve actually looks like per sample.
+**3. Start tracing:**
+```bash
+python -m phoenix.server.main serve
+```
+
+**4. Run your first evaluation:**
+```bash
+# Basic correctness test
+pytest experiments/example.py -v
+
+# Temperature sweep
+pytest experiments/basic/temperature/ -v
+
+# With specific model
+pytest experiments/ -v --test-llm-model gpt-4o
+```
+
+**5. View results:**
+```bash
+# List evaluation history
+eval-platform history list
+
+# Compare runs
+eval-platform compare run_001 run_002
+
+# Open tracing UI
+open http://localhost:6006
+```
+
+---
+
+## Usage Examples
+
+### Example 1: Prompt Engineering A/B Test
+
+You've rewritten your system prompt. Is it actually better?
+
+```bash
+# Run baseline (old prompt)
+pytest experiments/ -v \
+  --prompt-template prompts/v1.txt \
+  --dataset gsm8k \
+  --run-name "prompt_v1"
+
+# Run experiment (new prompt)
+pytest experiments/ -v \
+  --prompt-template prompts/v2.txt \
+  --dataset gsm8k \
+  --run-name "prompt_v2"
+
+# Compare
+eval-platform compare prompt_v1 prompt_v2
+```
+
+**Output:**
+```
+Comparison: prompt_v1 vs prompt_v2
+Dataset: gsm8k (100 samples)
+
+Metric: Exact Match
+  prompt_v1: 72.0% ± 4.5%
+  prompt_v2: 78.0% ± 4.1%
+  Delta: +6.0% (p < 0.05) ✓
+
+Per-sample breakdown:
+  Improved: 12 samples
+  Regressed: 6 samples
+  Unchanged: 82 samples
+```
+
+### Example 2: Model Selection
+
+Which model performs best on your task?
+
+```bash
+# Evaluate multiple models
+for model in gpt-4o claude local-llama; do
+  pytest experiments/ -v \
+    --test-llm-model $model \
+    --dataset my_task \
+    --run-name "model_$model"
+done
+
+# Compare all
+eval-platform compare model_gpt-4o model_claude model_local-llama
+```
+
+### Example 3: Temperature Optimization
+
+Find the optimal temperature for your use case.
+
+```bash
+# Run temperature sweep (0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0)
+pytest experiments/basic/temperature/ -v \
+  --test-llm-model gpt-4o \
+  --dataset creative_writing
+
+# Analyze results
+eval-platform history show temp_sweep_001
+```
+
+### Example 4: Custom Dataset
+
+Evaluate on your proprietary data.
+
+```bash
+# 1. Prepare your dataset (JSONL format)
+cat > my_eval.jsonl << 'EOF'
+{"id": "1", "input": "What is our refund policy?", "expected_output": "30 days..."}
+{"id": "2", "input": "How do I upgrade?", "expected_output": "Go to settings..."}
+EOF
+
+# 2. Import to platform
+eval-platform datasets import \
+  --file my_eval.jsonl \
+  --category qa \
+  --name "internal-qa-bench"
+
+# 3. Run evaluation
+pytest experiments/ -v --dataset internal-qa-bench
+```
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      CLI / Web UI                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
+│  │ Datasets │  │ Metrics  │  │ Tracing  │  │  History   │  │
+│  │          │  │          │  │          │  │  & Report  │  │
+│  │ HF Hub   │  │ Exact    │  │ Phoenix  │  │            │  │
+│  │ Custom   │  │ CodeExec │  │ OpenTel  │  │ Run logs   │  │
+│  │ Registry │  │ GEval    │  │ Spans    │  │ Compare    │  │
+│  │ JSONL    │  │ Custom   │  │ Latency  │  │ Regression │  │
+│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                   Experiment Runner                          │
+│            (pytest + LiteLLM + DeepEval)                     │
+├─────────────────────────────────────────────────────────────┤
+│                   Storage Layer                              │
+│         (JSONL datasets, SQLite history, traces)             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Design principles:**
+- **Battery included** — everything works out of the box
+- **Extensible** — plugin system for custom metrics, datasets, exporters
+- **Observable** — full tracing, no black boxes
+- **Reproducible** — declarative configs, versioned datasets, deterministic execution
+- **Production-ready** — error handling, retries, cost tracking, CI/CD integration
 
 ---
 
 ## Supported Benchmarks
 
-| Dataset          | Category             | Size | Scoring     | Source                  |
-| ---------------- | -------------------- | ---- | ----------- | ----------------------- |
-| GSM8K            | Math reasoning       | 100  | exact_match | openai/gsm8k            |
-| HumanEval        | Code generation      | 164  | code_exec   | openai/openai_humaneval |
-| TruthfulQA       | Factual accuracy     | 100  | geval       | TruthfulQA/truthful_qa  |
-| BBH              | Multi-step reasoning | 100  | exact_match | lukaemon/bbh            |
-| Academic Writing | Technical writing    | 30   | geval       | Custom                  |
-| Creative Writing | Creative tasks       | 30   | geval       | Custom                  |
-| WMT Translate    | Translation (ro-en)  | 50   | geval       | wmt/wmt16               |
+| Dataset | Category | Size | Scoring | Source |
+|---------|----------|------|---------|--------|
+| GSM8K | Math reasoning | 100 | exact_match | openai/gsm8k |
+| HumanEval | Code generation | 164 | code_exec | openai/openai_humaneval |
+| TruthfulQA | Factual accuracy | 100 | geval | TruthfulQA/truthful_qa |
+| BBH | Multi-step reasoning | 100 | exact_match | lukaemon/bbh |
+| Academic Writing | Technical writing | 30 | geval | Custom |
+| Creative Writing | Creative tasks | 30 | geval | Custom |
+| WMT Translate | Translation (ro-en) | 50 | geval | wmt/wmt16 |
+
+**Adding your own:** See [Datasets module](#-datasets)
 
 ---
 
 ## Roadmap
 
-### Phase 1 — Foundation ✅
-
-- [x] Unified dataset registry and JSONL format
-- [x] Temperature sweep framework
-- [x] Multi-scoring pipeline (exact_match, code_exec, geval)
-- [x] LiteLLM integration for model-agnostic inference
-- [x] Arize Phoenix observability
+### Phase 1 — Core Platform ✅
+- [x] Unified dataset management (HF + custom import)
+- [x] Built-in metrics (exact match, code exec, GEval)
+- [x] Tracing integration (Arize Phoenix)
+- [x] Evaluation history tracking
+- [x] Basic comparison framework
 
 ### Phase 2 — Agent Evaluation 🔨
-
 - [ ] Multi-turn agent conversation harness
 - [ ] Tool-use evaluation (function calling accuracy, schema compliance)
-- [ ] Agent trajectory scoring — not just final answer, but path quality
+- [ ] Agent trajectory scoring (path quality, not just final answer)
 - [ ] ReAct / CoT / planning pattern comparison
-- [ ] Agent benchmark datasets (SWE-bench subset, WebArena tasks)
+- [ ] Agent benchmark datasets (SWE-bench, WebArena)
 
-### Phase 3 — Scale & Rigor
-
-- [ ] Cartesian product runner — all models × all temperatures × all datasets in one command
-- [ ] Statistical significance testing (bootstrap confidence intervals on GEval scores)
-- [ ] Regression detection — alert when a model update degrades performance on any category
+### Phase 3 — Advanced Features
+- [ ] Statistical significance testing (bootstrap CI)
+- [ ] Regression detection (alert on quality degradation)
 - [ ] Cost-normalized scoring (quality per dollar, quality per token)
-- [ ] CI/CD integration — run evals on every PR, gate merges on quality thresholds
+- [ ] CI/CD integration (GitHub Actions, GitLab CI templates)
+- [ ] Distributed execution (run sweeps across multiple workers)
 
-### Phase 4 — Extensibility
+### Phase 4 — Web Platform
+- [ ] Web UI for dataset management
+- [ ] Interactive comparison dashboard
+- [ ] Team collaboration (shared runs, comments, annotations)
+- [ ] API for programmatic access
+- [ ] Export to W&B, MLflow, CSV, JSON
 
-- [ ] Plugin system for custom metrics
-- [ ] Dataset contribution guidelines and validation
-- [ ] Web dashboard for experiment results
-- [ ] Export to common formats (W&B, MLflow, CSV)
-- [ ] Distributed execution (run sweeps across multiple GPU workers)
+### Phase 5 — Extensibility
+- [ ] Plugin marketplace (community metrics, datasets)
+- [ ] Custom metric SDK
+- [ ] Dataset contribution guidelines
+- [ ] Self-hosted deployment guide
+- [ ] Enterprise features (SSO, RBAC, audit logs)
 
 ---
 
 ## Project Structure
 
 ```
-llm-experiments/
-├── models.json.example       # Model configuration template
-├── pyproject.toml             # Dependencies (uv/pip)
+llm-eval-platform/
+├── models.json.example          # Model configuration
+├── pyproject.toml               # Dependencies
 ├── datasets/
-│   ├── registry.yaml          # Dataset catalog (machine-readable)
+│   ├── registry.yaml            # Dataset catalog
 │   ├── scripts/
-│   │   └── fetch_datasets.py  # Download & convert to JSONL
-│   ├── math/                  # GSM8K
-│   ├── coding/                # HumanEval
-│   ├── factual/               # TruthfulQA
-│   ├── reasoning/             # BBH
-│   ├── writing/               # Academic writing
-│   ├── creative_writing/      # Creative tasks
-│   └── translation/           # WMT subset
+│   │   └── fetch_datasets.py    # HF download + conversion
+│   ├── math/                    # GSM8K
+│   ├── coding/                  # HumanEval
+│   ├── factual/                 # TruthfulQA
+│   ├── reasoning/               # BBH
+│   ├── writing/                 # Academic
+│   ├── creative_writing/        # Creative
+│   └── translation/             # WMT
 ├── experiments/
-│   ├── conftest.py            # Pytest fixtures & CLI options
-│   ├── config.py              # Shared configuration
-│   ├── example.py             # Minimal working example
-│   └── basic/                 # Temperature sweep experiments
-└── .deepeval/                 # DeepEval cache & results
+│   ├── conftest.py              # Pytest fixtures
+│   ├── config.py                # Shared config
+│   ├── example.py               # Minimal example
+│   └── basic/
+│       └── temperature/         # Temperature sweep
+└── .eval_platform/              # Run history (auto-generated)
 ```
-
----
-
-## Adding Your Own Dataset
-
-1. Create a JSONL file in the appropriate `datasets/<category>/` directory
-2. Follow the unified JSONL schema (see [Dataset Format](#dataset-format))
-3. Register it in `datasets/registry.yaml`
-4. Add scoring config in `experiments/config.py` → `DATASET_CONFIG`
-
-```yaml
-# registry.yaml
-- name: my_dataset
-  category: reasoning
-  source: custom
-  license: MIT
-  split: test
-  target_size: 50
-  scoring: exact_match
-  description: "Custom reasoning benchmark"
-```
-
----
-
-## Adding a Model
-
-Just add an entry to `models.json`. LiteLLM handles the rest:
-
-```json
-{
-  "my_model": {
-    "model": "openai/my-finetune",
-    "api_key": "sk-...",
-    "api_base": "https://my-endpoint.example.com/v1"
-  }
-}
-```
-
-Works with: OpenAI, Anthropic, Google, AWS Bedrock, Azure, vLLM, Ollama, LM Studio, Together AI, Groq, any OpenAI-compatible API.
-
----
-
-## Contributing
-
-This is an early-stage project. Contributions welcome in:
-
-- **New datasets** — follow the JSONL schema, include licensing info
-- **New metrics** — extend the scoring pipeline for your domain
-- **Agent eval** — the Phase 2 roadmap needs builders
-- **Bug reports** — if something breaks, we want to know
 
 ---
 
 ## Tech Stack
 
-| Component          | Technology             | Why                                    |
-| ------------------ | ---------------------- | -------------------------------------- |
-| Test runner        | pytest                 | Ecosystem, CI integration, parallelism |
-| LLM interface      | LiteLLM                | 100+ providers, one API                |
-| Metrics            | DeepEval               | GEval, caching, model abstraction      |
-| Datasets           | HuggingFace `datasets` | Standard registry, streaming           |
-| Tracing            | Arize Phoenix          | Open-source, OTel-compatible, local    |
-| Package management | uv                     | Fast, reproducible lockfiles           |
-| Config             | JSON + YAML            | Human-readable, git-friendly           |
+| Component | Technology | Why |
+|-----------|-----------|-----|
+| **Test runner** | pytest | Ecosystem, CI integration, parallelism |
+| **LLM interface** | LiteLLM | 100+ providers, one API |
+| **Metrics** | DeepEval | GEval, caching, model abstraction |
+| **Datasets** | HuggingFace `datasets` | Standard registry, streaming |
+| **Tracing** | Arize Phoenix | Open-source, OTel-compatible, local |
+| **History** | SQLite + JSONL | Simple, portable, queryable |
+| **Package manager** | uv | Fast, reproducible lockfiles |
+
+---
+
+## Contributing
+
+This is an early-stage project. We're building the evaluation platform we wish existed.
+
+**Ways to contribute:**
+- **Datasets** — add benchmarks for your domain
+- **Metrics** — implement new evaluation methods
+- **Agent eval** — help build Phase 2
+- **Web UI** — design the dashboard
+- **Bug reports** — if something breaks, we want to know
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## Comparison with Alternatives
+
+| Feature | LLM Eval Platform | DeepEval | LangSmith | Custom Scripts |
+|---------|-------------------|----------|-----------|----------------|
+| **Battery included** | ✅ | ✅ | ❌ | ❌ |
+| **Open source** | ✅ | ✅ | ❌ | ✅ |
+| **Dataset management** | ✅ | ❌ | ❌ | ❌ |
+| **Built-in tracing** | ✅ | ❌ | ✅ | ❌ |
+| **History tracking** | ✅ | ❌ | ✅ | ❌ |
+| **Comparison framework** | ✅ | ❌ | ⚠️ | ❌ |
+| **Self-hosted** | ✅ | ✅ | ❌ | ✅ |
+| **Agent evaluation** | 🔜 | ⚠️ | ✅ | ❌ |
 
 ---
 
 ## License
 
 MIT
+
+---
+
+## Star History
+
+If this project helps your LLM evaluation workflow, consider giving it a ⭐
+
+---
+
+**Built with ❤️ for the LLM community**
+
+*Stop guessing. Start measuring.*
